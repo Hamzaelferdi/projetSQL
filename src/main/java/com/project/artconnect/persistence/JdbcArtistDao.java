@@ -4,6 +4,7 @@ import com.project.artconnect.config.DatabaseConfig;
 import com.project.artconnect.dao.ArtistDao;
 import com.project.artconnect.model.Artist;
 import com.project.artconnect.model.Discipline;
+import com.project.artconnect.util.ConnectionManager;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -215,6 +216,28 @@ public class JdbcArtistDao implements ArtistDao {
                     disciplines.add(new Discipline(rs.getString("name")));
                 }
             }
+        }
+
+        return disciplines;
+    }
+
+    /**
+     * Retrieves all disciplines from the database.
+     */
+    @Override
+    public List<Discipline> findAllDisciplines() {
+        String sql = "SELECT name FROM discipline ORDER BY name";
+        List<Discipline> disciplines = new ArrayList<>();
+
+        try (Connection conn = ConnectionManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                disciplines.add(new Discipline(rs.getString("name")));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error retrieving disciplines", e);
         }
 
         return disciplines;
