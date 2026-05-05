@@ -3,6 +3,7 @@ package com.project.artconnect.persistence;
 import com.project.artconnect.config.DatabaseConfig;
 import com.project.artconnect.dao.ArtistDao;
 import com.project.artconnect.model.Artist;
+import com.project.artconnect.model.Discipline;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,16 +26,15 @@ public class JdbcArtistDao implements ArtistDao {
                 DatabaseConfig.URL, 
                 DatabaseConfig.USER, 
                 DatabaseConfig.PASSWORD);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
             
             while (rs.next()) {
-                Artist artist = mapRow(rs);
+                Artist artist = mapRow(rs, conn);
                 artists.add(artist);
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving all artists: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error retrieving all artists", e);
         }
         
         return artists;
@@ -45,32 +45,43 @@ public class JdbcArtistDao implements ArtistDao {
      */
     @Override
     public void save(Artist artist) {
-        String sql = "INSERT INTO artist (name, bio, birth_year, contact_email, phone, city, website, social_media, is_active) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
+        String insertArtistSql = "INSERT INTO artist (name, bio, birth_year, contact_email, phone, city, website, social_media, is_active) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String upsertDisciplineSql = "INSERT INTO discipline (name) VALUES (?) ON DUPLICATE KEY UPDATE name = VALUES(name)";
+        String linkDisciplineSql = "INSERT INTO artist_discipline (artist_name, discipline_id) "
+                + "SELECT ?, d.id FROM discipline d WHERE d.name = ?";
+
         try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            pstmt.setString(1, artist.getName());
-            pstmt.setString(2, artist.getBio());
-            pstmt.setObject(3, artist.getBirthYear(), Types.INTEGER);
-            pstmt.setString(4, artist.getContactEmail());
-            pstmt.setString(5, artist.getPhone());
-            pstmt.setString(6, artist.getCity());
-            pstmt.setString(7, artist.getWebsite());
-            pstmt.setString(8, artist.getSocialMedia());
-            pstmt.setBoolean(9, artist.isActive());
-            
-            int rowsInserted = pstmt.executeUpdate();
-            if (rowsInserted > 0) {
-                System.out.println("Artist '" + artist.getName() + "' inserted successfully.");
+                DatabaseConfig.URL,
+                DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD)) {
+
+            conn.setAutoCommit(false);
+            try (PreparedStatement insertArtistStmt = conn.prepareStatement(insertArtistSql);
+                 PreparedStatement upsertDisciplineStmt = conn.prepareStatement(upsertDisciplineSql);
+                 PreparedStatement linkDisciplineStmt = conn.prepareStatement(linkDisciplineSql)) {
+
+                insertArtistStmt.setString(1, artist.getName());
+                insertArtistStmt.setString(2, artist.getBio());
+                insertArtistStmt.setObject(3, artist.getBirthYear(), Types.INTEGER);
+                insertArtistStmt.setString(4, artist.getContactEmail());
+                insertArtistStmt.setString(5, artist.getPhone());
+                insertArtistStmt.setString(6, artist.getCity());
+                insertArtistStmt.setString(7, artist.getWebsite());
+                insertArtistStmt.setString(8, artist.getSocialMedia());
+                insertArtistStmt.setBoolean(9, artist.isActive());
+                insertArtistStmt.executeUpdate();
+
+                insertDisciplines(conn, artist, upsertDisciplineStmt, linkDisciplineStmt);
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            System.err.println("Error saving artist: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error saving artist", e);
         }
     }
 
@@ -79,32 +90,48 @@ public class JdbcArtistDao implements ArtistDao {
      */
     @Override
     public void update(Artist artist) {
-        String sql = "UPDATE artist SET bio = ?, birth_year = ?, contact_email = ?, phone = ?, "
-                   + "city = ?, website = ?, social_media = ?, is_active = ? WHERE name = ?";
-        
+        String updateArtistSql = "UPDATE artist SET bio = ?, birth_year = ?, contact_email = ?, phone = ?, "
+                + "city = ?, website = ?, social_media = ?, is_active = ? WHERE name = ?";
+        String deleteLinksSql = "DELETE FROM artist_discipline WHERE artist_name = ?";
+        String upsertDisciplineSql = "INSERT INTO discipline (name) VALUES (?) ON DUPLICATE KEY UPDATE name = VALUES(name)";
+        String linkDisciplineSql = "INSERT INTO artist_discipline (artist_name, discipline_id) "
+                + "SELECT ?, d.id FROM discipline d WHERE d.name = ?";
+
         try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            pstmt.setString(1, artist.getBio());
-            pstmt.setObject(2, artist.getBirthYear(), Types.INTEGER);
-            pstmt.setString(3, artist.getContactEmail());
-            pstmt.setString(4, artist.getPhone());
-            pstmt.setString(5, artist.getCity());
-            pstmt.setString(6, artist.getWebsite());
-            pstmt.setString(7, artist.getSocialMedia());
-            pstmt.setBoolean(8, artist.isActive());
-            pstmt.setString(9, artist.getName());
-            
-            int rowsUpdated = pstmt.executeUpdate();
-            if (rowsUpdated > 0) {
-                System.out.println("Artist '" + artist.getName() + "' updated successfully.");
+                DatabaseConfig.URL,
+                DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD)) {
+
+            conn.setAutoCommit(false);
+            try (PreparedStatement updateArtistStmt = conn.prepareStatement(updateArtistSql);
+                 PreparedStatement deleteLinksStmt = conn.prepareStatement(deleteLinksSql);
+                 PreparedStatement upsertDisciplineStmt = conn.prepareStatement(upsertDisciplineSql);
+                 PreparedStatement linkDisciplineStmt = conn.prepareStatement(linkDisciplineSql)) {
+
+                updateArtistStmt.setString(1, artist.getBio());
+                updateArtistStmt.setObject(2, artist.getBirthYear(), Types.INTEGER);
+                updateArtistStmt.setString(3, artist.getContactEmail());
+                updateArtistStmt.setString(4, artist.getPhone());
+                updateArtistStmt.setString(5, artist.getCity());
+                updateArtistStmt.setString(6, artist.getWebsite());
+                updateArtistStmt.setString(7, artist.getSocialMedia());
+                updateArtistStmt.setBoolean(8, artist.isActive());
+                updateArtistStmt.setString(9, artist.getName());
+                updateArtistStmt.executeUpdate();
+
+                deleteLinksStmt.setString(1, artist.getName());
+                deleteLinksStmt.executeUpdate();
+
+                insertDisciplines(conn, artist, upsertDisciplineStmt, linkDisciplineStmt);
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            System.err.println("Error updating artist: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error updating artist", e);
         }
     }
 
@@ -122,14 +149,9 @@ public class JdbcArtistDao implements ArtistDao {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, artistName);
-            
-            int rowsDeleted = pstmt.executeUpdate();
-            if (rowsDeleted > 0) {
-                System.out.println("Artist '" + artistName + "' deleted successfully.");
-            }
+            pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting artist: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error deleting artist", e);
         }
     }
 
@@ -151,13 +173,12 @@ public class JdbcArtistDao implements ArtistDao {
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    Artist artist = mapRow(rs);
+                    Artist artist = mapRow(rs, conn);
                     artists.add(artist);
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error finding artists by city: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error finding artists by city", e);
         }
         
         return artists;
@@ -166,7 +187,7 @@ public class JdbcArtistDao implements ArtistDao {
     /**
      * Maps a database row (ResultSet) to an Artist object.
      */
-    private Artist mapRow(ResultSet rs) throws SQLException {
+    private Artist mapRow(ResultSet rs, Connection conn) throws SQLException {
         Artist artist = new Artist();
         artist.setName(rs.getString("name"));
         artist.setBio(rs.getString("bio"));
@@ -177,6 +198,47 @@ public class JdbcArtistDao implements ArtistDao {
         artist.setWebsite(rs.getString("website"));
         artist.setSocialMedia(rs.getString("social_media"));
         artist.setActive(rs.getBoolean("is_active"));
+        artist.setDisciplines(findDisciplinesByArtistName(conn, artist.getName()));
         return artist;
+    }
+
+    private List<Discipline> findDisciplinesByArtistName(Connection conn, String artistName) throws SQLException {
+        String sql = "SELECT d.name FROM discipline d "
+                + "INNER JOIN artist_discipline ad ON ad.discipline_id = d.id "
+                + "WHERE ad.artist_name = ?";
+        List<Discipline> disciplines = new ArrayList<>();
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, artistName);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    disciplines.add(new Discipline(rs.getString("name")));
+                }
+            }
+        }
+
+        return disciplines;
+    }
+
+    private void insertDisciplines(Connection conn,
+                                   Artist artist,
+                                   PreparedStatement upsertDisciplineStmt,
+                                   PreparedStatement linkDisciplineStmt) throws SQLException {
+        if (artist.getDisciplines() == null) {
+            return;
+        }
+
+        for (Discipline discipline : artist.getDisciplines()) {
+            if (discipline == null || discipline.getName() == null || discipline.getName().isBlank()) {
+                continue;
+            }
+
+            upsertDisciplineStmt.setString(1, discipline.getName());
+            upsertDisciplineStmt.executeUpdate();
+
+            linkDisciplineStmt.setString(1, artist.getName());
+            linkDisciplineStmt.setString(2, discipline.getName());
+            linkDisciplineStmt.executeUpdate();
+        }
     }
 }

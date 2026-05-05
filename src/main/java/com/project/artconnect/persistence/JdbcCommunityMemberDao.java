@@ -55,8 +55,8 @@ public class JdbcCommunityMemberDao implements CommunityMemberDao {
                 DatabaseConfig.URL, 
                 DatabaseConfig.USER, 
                 DatabaseConfig.PASSWORD);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
             
             while (rs.next()) {
                 CommunityMember member = mapRow(rs);

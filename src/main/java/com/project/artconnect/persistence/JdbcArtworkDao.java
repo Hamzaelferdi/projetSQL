@@ -3,6 +3,7 @@ package com.project.artconnect.persistence;
 import com.project.artconnect.config.DatabaseConfig;
 import com.project.artconnect.dao.ArtworkDao;
 import com.project.artconnect.model.Artwork;
+import com.project.artconnect.model.ArtworkTag;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,16 +26,15 @@ public class JdbcArtworkDao implements ArtworkDao {
                 DatabaseConfig.URL, 
                 DatabaseConfig.USER, 
                 DatabaseConfig.PASSWORD);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
             
             while (rs.next()) {
-                Artwork artwork = mapRow(rs);
+                Artwork artwork = mapRow(rs, conn);
                 artworks.add(artwork);
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving all artworks: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error retrieving all artworks", e);
         }
         
         return artworks;
@@ -45,32 +45,40 @@ public class JdbcArtworkDao implements ArtworkDao {
      */
     @Override
     public void save(Artwork artwork) {
-        String sql = "INSERT INTO artwork (title, creation_year, type, medium, dimensions, description, price, status, artist_name) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
+        String insertArtworkSql = "INSERT INTO artwork (title, creation_year, type, medium, dimensions, description, price, status, artist_name) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String insertTagSql = "INSERT INTO artwork_tag (artwork_title, tag_name) VALUES (?, ?)";
+
         try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            pstmt.setString(1, artwork.getTitle());
-            pstmt.setObject(2, artwork.getCreationYear(), Types.INTEGER);
-            pstmt.setString(3, artwork.getType());
-            pstmt.setString(4, artwork.getMedium());
-            pstmt.setString(5, artwork.getDimensions());
-            pstmt.setString(6, artwork.getDescription());
-            pstmt.setDouble(7, artwork.getPrice());
-            pstmt.setString(8, artwork.getStatus().toString());
-            pstmt.setString(9, artwork.getArtist() != null ? artwork.getArtist().getName() : null);
-            
-            int rowsInserted = pstmt.executeUpdate();
-            if (rowsInserted > 0) {
-                System.out.println("Artwork '" + artwork.getTitle() + "' inserted successfully.");
+                DatabaseConfig.URL,
+                DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD)) {
+
+            conn.setAutoCommit(false);
+            try (PreparedStatement insertArtworkStmt = conn.prepareStatement(insertArtworkSql);
+                 PreparedStatement insertTagStmt = conn.prepareStatement(insertTagSql)) {
+
+                insertArtworkStmt.setString(1, artwork.getTitle());
+                insertArtworkStmt.setObject(2, artwork.getCreationYear(), Types.INTEGER);
+                insertArtworkStmt.setString(3, artwork.getType());
+                insertArtworkStmt.setString(4, artwork.getMedium());
+                insertArtworkStmt.setString(5, artwork.getDimensions());
+                insertArtworkStmt.setString(6, artwork.getDescription());
+                insertArtworkStmt.setDouble(7, artwork.getPrice());
+                insertArtworkStmt.setString(8, artwork.getStatus() != null ? artwork.getStatus().name() : null);
+                insertArtworkStmt.setString(9, artwork.getArtist() != null ? artwork.getArtist().getName() : null);
+                insertArtworkStmt.executeUpdate();
+
+                insertTags(artwork, insertTagStmt);
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            System.err.println("Error saving artwork: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error saving artwork", e);
         }
     }
 
@@ -79,32 +87,45 @@ public class JdbcArtworkDao implements ArtworkDao {
      */
     @Override
     public void update(Artwork artwork) {
-        String sql = "UPDATE artwork SET creation_year = ?, type = ?, medium = ?, dimensions = ?, "
-                   + "description = ?, price = ?, status = ?, artist_name = ? WHERE title = ?";
-        
+        String updateArtworkSql = "UPDATE artwork SET creation_year = ?, type = ?, medium = ?, dimensions = ?, "
+                + "description = ?, price = ?, status = ?, artist_name = ? WHERE title = ?";
+        String deleteTagsSql = "DELETE FROM artwork_tag WHERE artwork_title = ?";
+        String insertTagSql = "INSERT INTO artwork_tag (artwork_title, tag_name) VALUES (?, ?)";
+
         try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            pstmt.setObject(1, artwork.getCreationYear(), Types.INTEGER);
-            pstmt.setString(2, artwork.getType());
-            pstmt.setString(3, artwork.getMedium());
-            pstmt.setString(4, artwork.getDimensions());
-            pstmt.setString(5, artwork.getDescription());
-            pstmt.setDouble(6, artwork.getPrice());
-            pstmt.setString(7, artwork.getStatus().toString());
-            pstmt.setString(8, artwork.getArtist() != null ? artwork.getArtist().getName() : null);
-            pstmt.setString(9, artwork.getTitle());
-            
-            int rowsUpdated = pstmt.executeUpdate();
-            if (rowsUpdated > 0) {
-                System.out.println("Artwork '" + artwork.getTitle() + "' updated successfully.");
+                DatabaseConfig.URL,
+                DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD)) {
+
+            conn.setAutoCommit(false);
+            try (PreparedStatement updateArtworkStmt = conn.prepareStatement(updateArtworkSql);
+                 PreparedStatement deleteTagsStmt = conn.prepareStatement(deleteTagsSql);
+                 PreparedStatement insertTagStmt = conn.prepareStatement(insertTagSql)) {
+
+                updateArtworkStmt.setObject(1, artwork.getCreationYear(), Types.INTEGER);
+                updateArtworkStmt.setString(2, artwork.getType());
+                updateArtworkStmt.setString(3, artwork.getMedium());
+                updateArtworkStmt.setString(4, artwork.getDimensions());
+                updateArtworkStmt.setString(5, artwork.getDescription());
+                updateArtworkStmt.setDouble(6, artwork.getPrice());
+                updateArtworkStmt.setString(7, artwork.getStatus() != null ? artwork.getStatus().name() : null);
+                updateArtworkStmt.setString(8, artwork.getArtist() != null ? artwork.getArtist().getName() : null);
+                updateArtworkStmt.setString(9, artwork.getTitle());
+                updateArtworkStmt.executeUpdate();
+
+                deleteTagsStmt.setString(1, artwork.getTitle());
+                deleteTagsStmt.executeUpdate();
+
+                insertTags(artwork, insertTagStmt);
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            System.err.println("Error updating artwork: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error updating artwork", e);
         }
     }
 
@@ -122,14 +143,9 @@ public class JdbcArtworkDao implements ArtworkDao {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, title);
-            
-            int rowsDeleted = pstmt.executeUpdate();
-            if (rowsDeleted > 0) {
-                System.out.println("Artwork '" + title + "' deleted successfully.");
-            }
+            pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting artwork: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error deleting artwork", e);
         }
     }
 
@@ -151,13 +167,12 @@ public class JdbcArtworkDao implements ArtworkDao {
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    Artwork artwork = mapRow(rs);
+                    Artwork artwork = mapRow(rs, conn);
                     artworks.add(artwork);
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error finding artworks by artist: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error finding artworks by artist", e);
         }
         
         return artworks;
@@ -166,7 +181,7 @@ public class JdbcArtworkDao implements ArtworkDao {
     /**
      * Maps a database row (ResultSet) to an Artwork object.
      */
-    private Artwork mapRow(ResultSet rs) throws SQLException {
+    private Artwork mapRow(ResultSet rs, Connection conn) throws SQLException {
         Artwork artwork = new Artwork();
         artwork.setTitle(rs.getString("title"));
         artwork.setCreationYear(rs.getObject("creation_year", Integer.class));
@@ -180,10 +195,40 @@ public class JdbcArtworkDao implements ArtworkDao {
         if (statusStr != null) {
             artwork.setStatus(Artwork.Status.valueOf(statusStr));
         }
-        
-        // Note: artist_name is stored but the full Artist object needs to be loaded separately
-        // This is a simplified approach - in production, you might use JOINs or lazy loading
+        artwork.setTags(findTagsByArtworkTitle(conn, artwork.getTitle()));
         
         return artwork;
+    }
+
+    private List<ArtworkTag> findTagsByArtworkTitle(Connection conn, String artworkTitle) throws SQLException {
+        String sql = "SELECT tag_name FROM artwork_tag WHERE artwork_title = ?";
+        List<ArtworkTag> tags = new ArrayList<>();
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, artworkTitle);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    tags.add(new ArtworkTag(rs.getString("tag_name")));
+                }
+            }
+        }
+
+        return tags;
+    }
+
+    private void insertTags(Artwork artwork, PreparedStatement insertTagStmt) throws SQLException {
+        if (artwork.getTags() == null) {
+            return;
+        }
+
+        for (ArtworkTag tag : artwork.getTags()) {
+            if (tag == null || tag.getName() == null || tag.getName().isBlank()) {
+                continue;
+            }
+
+            insertTagStmt.setString(1, artwork.getTitle());
+            insertTagStmt.setString(2, tag.getName());
+            insertTagStmt.executeUpdate();
+        }
     }
 }
