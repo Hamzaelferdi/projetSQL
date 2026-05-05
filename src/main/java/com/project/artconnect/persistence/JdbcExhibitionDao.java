@@ -42,6 +42,34 @@ public class JdbcExhibitionDao implements ExhibitionDao {
     }
 
     /**
+     * Retrieves all exhibitions belonging to a specific gallery.
+     */
+    @Override
+    public List<Exhibition> findByGalleryName(String galleryName) {
+        String sql = "SELECT * FROM exhibition WHERE gallery_name = ?";
+        List<Exhibition> exhibitions = new ArrayList<>();
+
+        try (Connection conn = DriverManager.getConnection(
+                DatabaseConfig.URL,
+                DatabaseConfig.USER,
+                DatabaseConfig.PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, galleryName);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    exhibitions.add(mapRow(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving exhibitions by gallery: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return exhibitions;
+    }
+
+    /**
      * Inserts a new exhibition into the database.
      */
     @Override
