@@ -1,0 +1,6 @@
+# Copier ce fichier en db.properties (meme repertoire) puis renseigner les valeurs.
+# db.properties est ignore par git (.gitignore) - il contient les credentials locaux.
+
+db.url=jdbc:mysql://localhost:3306/artconnect_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+db.user=root
+db.password=CHANGE_ME

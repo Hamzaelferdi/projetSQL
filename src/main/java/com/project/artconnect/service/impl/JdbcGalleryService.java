@@ -36,4 +36,28 @@ public class JdbcGalleryService implements GalleryService {
         if (gallery == null) return Collections.emptyList();
         return exhibitionDao.findByGalleryName(gallery.getName());
     }
+
+    // ------------------------------------------------------------------
+    // CRUD Exhibitions
+    // ------------------------------------------------------------------
+
+    @Override
+    public List<Exhibition> getAllExhibitions() {
+        return exhibitionDao.findAll();
+    }
+
+    @Override
+    public void createExhibition(Exhibition exhibition) {
+        exhibitionDao.save(exhibition);
+    }
+
+    @Override
+    public void updateExhibition(Exhibition exhibition) {
+        exhibitionDao.update(exhibition);
+    }
+
+    @Override
+    public void deleteExhibition(String title) {
+        exhibitionDao.delete(title);
+    }
 }

@@ -1,6 +1,6 @@
 package com.project.artconnect.persistence;
 
-import com.project.artconnect.config.DatabaseConfig;
+import com.project.artconnect.util.ConnectionManager;
 import com.project.artconnect.dao.GalleryDao;
 import com.project.artconnect.model.Gallery;
 import java.sql.*;
@@ -21,10 +21,7 @@ public class JdbcGalleryDao implements GalleryDao {
     public Optional<Gallery> findById(Long id) {
         String sql = "SELECT * FROM gallery WHERE id = ?";
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setLong(1, id);
@@ -51,10 +48,7 @@ public class JdbcGalleryDao implements GalleryDao {
         String sql = "SELECT * FROM gallery";
         List<Gallery> galleries = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
             

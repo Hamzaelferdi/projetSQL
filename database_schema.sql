@@ -301,7 +301,7 @@ DELIMITER $$
 CREATE TRIGGER trg_artwork_update_timestamp
 BEFORE UPDATE ON artwork
 FOR EACH ROW
-SET NEW.updated_at = CURRENT_TIMESTAMP;
+SET NEW.updated_at = CURRENT_TIMESTAMP$$
 DELIMITER ;
 
 -- ==================================================

@@ -1,6 +1,5 @@
 package com.project.artconnect.persistence;
 
-import com.project.artconnect.config.DatabaseConfig;
 import com.project.artconnect.dao.ArtistDao;
 import com.project.artconnect.model.Artist;
 import com.project.artconnect.model.Discipline;
@@ -23,10 +22,7 @@ public class JdbcArtistDao implements ArtistDao {
         String sql = "SELECT * FROM artist";
         List<Artist> artists = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
             
@@ -52,10 +48,7 @@ public class JdbcArtistDao implements ArtistDao {
         String linkDisciplineSql = "INSERT INTO artist_discipline (artist_name, discipline_id) "
                 + "SELECT ?, d.id FROM discipline d WHERE d.name = ?";
 
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL,
-                DatabaseConfig.USER,
-                DatabaseConfig.PASSWORD)) {
+        try (Connection conn = ConnectionManager.getConnection()) {
 
             conn.setAutoCommit(false);
             try (PreparedStatement insertArtistStmt = conn.prepareStatement(insertArtistSql);
@@ -98,10 +91,7 @@ public class JdbcArtistDao implements ArtistDao {
         String linkDisciplineSql = "INSERT INTO artist_discipline (artist_name, discipline_id) "
                 + "SELECT ?, d.id FROM discipline d WHERE d.name = ?";
 
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL,
-                DatabaseConfig.USER,
-                DatabaseConfig.PASSWORD)) {
+        try (Connection conn = ConnectionManager.getConnection()) {
 
             conn.setAutoCommit(false);
             try (PreparedStatement updateArtistStmt = conn.prepareStatement(updateArtistSql);
@@ -143,10 +133,7 @@ public class JdbcArtistDao implements ArtistDao {
     public void delete(String artistName) {
         String sql = "DELETE FROM artist WHERE name = ?";
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, artistName);
@@ -164,10 +151,7 @@ public class JdbcArtistDao implements ArtistDao {
         String sql = "SELECT * FROM artist WHERE city = ?";
         List<Artist> artists = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, city);

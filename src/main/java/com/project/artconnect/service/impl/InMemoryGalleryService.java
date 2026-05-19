@@ -69,4 +69,31 @@ public class InMemoryGalleryService implements GalleryService {
             return Collections.emptyList();
         return gallery.getExhibitions();
     }
+
+    @Override
+    public List<Exhibition> getAllExhibitions() {
+        List<Exhibition> all = new ArrayList<>();
+        for (Gallery g : galleries.values()) {
+            all.addAll(g.getExhibitions());
+        }
+        return all;
+    }
+
+    @Override
+    public void createExhibition(Exhibition exhibition) {
+        if (exhibition == null || exhibition.getGallery() == null) return;
+        exhibition.getGallery().addExhibition(exhibition);
+    }
+
+    @Override
+    public void updateExhibition(Exhibition exhibition) {
+        // no-op : la reference est deja modifiee en memoire
+    }
+
+    @Override
+    public void deleteExhibition(String title) {
+        for (Gallery g : galleries.values()) {
+            g.getExhibitions().removeIf(e -> e.getTitle() != null && e.getTitle().equals(title));
+        }
+    }
 }
