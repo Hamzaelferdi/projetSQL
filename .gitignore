@@ -1,0 +1,23 @@
+# Build
+target/
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Configuration sensible : credentials BD
+# Le fichier db.properties contient l'URL, l'utilisateur et le mot de passe.
+# Chaque developpeur recree son propre fichier en s'inspirant de db.properties.example
+src/main/resources/db.properties

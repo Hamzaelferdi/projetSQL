@@ -24,9 +24,22 @@ public class JdbcWorkshopService implements WorkshopService {
 
     @Override
     public Optional<Workshop> getWorkshopByTitle(String title) {
-        return workshopDao.findAll().stream()
-                .filter(w -> w.getTitle().equals(title))
-                .findFirst();
+        return workshopDao.findByTitle(title);
+    }
+
+    @Override
+    public void createWorkshop(Workshop workshop) {
+        workshopDao.save(workshop);
+    }
+
+    @Override
+    public void updateWorkshop(Workshop workshop) {
+        workshopDao.update(workshop);
+    }
+
+    @Override
+    public void deleteWorkshop(String title) {
+        workshopDao.delete(title);
     }
 
     @Override

@@ -49,6 +49,23 @@ public class InMemoryCommunityService implements CommunityService {
     }
 
     @Override
+    public void createMember(CommunityMember member) {
+        if (member == null || member.getName() == null) return;
+        members.put(member.getName(), member);
+    }
+
+    @Override
+    public void updateMember(CommunityMember member) {
+        if (member == null || member.getName() == null) return;
+        members.put(member.getName(), member);
+    }
+
+    @Override
+    public void deleteMember(String name) {
+        members.remove(name);
+    }
+
+    @Override
     public List<Review> getReviewsByMember(CommunityMember member) {
         if (member == null)
             return Collections.emptyList();

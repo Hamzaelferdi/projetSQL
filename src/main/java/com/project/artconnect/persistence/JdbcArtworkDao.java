@@ -1,6 +1,6 @@
 package com.project.artconnect.persistence;
 
-import com.project.artconnect.config.DatabaseConfig;
+import com.project.artconnect.util.ConnectionManager;
 import com.project.artconnect.dao.ArtworkDao;
 import com.project.artconnect.model.Artwork;
 import com.project.artconnect.model.ArtworkTag;
@@ -22,10 +22,7 @@ public class JdbcArtworkDao implements ArtworkDao {
         String sql = "SELECT * FROM artwork";
         List<Artwork> artworks = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
             
@@ -49,10 +46,7 @@ public class JdbcArtworkDao implements ArtworkDao {
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         String insertTagSql = "INSERT INTO artwork_tag (artwork_title, tag_name) VALUES (?, ?)";
 
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL,
-                DatabaseConfig.USER,
-                DatabaseConfig.PASSWORD)) {
+        try (Connection conn = ConnectionManager.getConnection()) {
 
             conn.setAutoCommit(false);
             try (PreparedStatement insertArtworkStmt = conn.prepareStatement(insertArtworkSql);
@@ -92,10 +86,7 @@ public class JdbcArtworkDao implements ArtworkDao {
         String deleteTagsSql = "DELETE FROM artwork_tag WHERE artwork_title = ?";
         String insertTagSql = "INSERT INTO artwork_tag (artwork_title, tag_name) VALUES (?, ?)";
 
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL,
-                DatabaseConfig.USER,
-                DatabaseConfig.PASSWORD)) {
+        try (Connection conn = ConnectionManager.getConnection()) {
 
             conn.setAutoCommit(false);
             try (PreparedStatement updateArtworkStmt = conn.prepareStatement(updateArtworkSql);
@@ -136,10 +127,7 @@ public class JdbcArtworkDao implements ArtworkDao {
     public void delete(String title) {
         String sql = "DELETE FROM artwork WHERE title = ?";
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, title);
@@ -157,10 +145,7 @@ public class JdbcArtworkDao implements ArtworkDao {
         String sql = "SELECT * FROM artwork WHERE artist_name = ?";
         List<Artwork> artworks = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, artistName);

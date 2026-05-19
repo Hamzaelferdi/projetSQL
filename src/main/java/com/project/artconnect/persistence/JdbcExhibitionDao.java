@@ -1,6 +1,6 @@
 package com.project.artconnect.persistence;
 
-import com.project.artconnect.config.DatabaseConfig;
+import com.project.artconnect.util.ConnectionManager;
 import com.project.artconnect.dao.ExhibitionDao;
 import com.project.artconnect.model.Exhibition;
 import java.sql.*;
@@ -22,10 +22,7 @@ public class JdbcExhibitionDao implements ExhibitionDao {
         String sql = "SELECT * FROM exhibition";
         List<Exhibition> exhibitions = new ArrayList<>();
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
             
@@ -49,10 +46,7 @@ public class JdbcExhibitionDao implements ExhibitionDao {
         String sql = "SELECT * FROM exhibition WHERE gallery_name = ?";
         List<Exhibition> exhibitions = new ArrayList<>();
 
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL,
-                DatabaseConfig.USER,
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, galleryName);
@@ -77,10 +71,7 @@ public class JdbcExhibitionDao implements ExhibitionDao {
         String sql = "INSERT INTO exhibition (title, start_date, end_date, description, gallery_name, curator_name, theme) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, exhibition.getTitle());
@@ -109,10 +100,7 @@ public class JdbcExhibitionDao implements ExhibitionDao {
         String sql = "UPDATE exhibition SET start_date = ?, end_date = ?, description = ?, "
                    + "gallery_name = ?, curator_name = ?, theme = ? WHERE title = ?";
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setObject(1, exhibition.getStartDate(), Types.DATE);
@@ -140,10 +128,7 @@ public class JdbcExhibitionDao implements ExhibitionDao {
     public void delete(String title) {
         String sql = "DELETE FROM exhibition WHERE title = ?";
         
-        try (Connection conn = DriverManager.getConnection(
-                DatabaseConfig.URL, 
-                DatabaseConfig.USER, 
-                DatabaseConfig.PASSWORD);
+        try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
             pstmt.setString(1, title);
